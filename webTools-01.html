@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>页面编排工具</title>
+  <meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+  <link rel="stylesheet" href="hui/h_ui.min.css" type="text/css">
+  <script src="hui/vue.js" type="text/javascript"></script>
+  <script src="hui/h_ui.js" type="text/javascript"></script>
+  <style>
+    body {
+      margin: 10px;
+    }
+
+    .header {
+      height: 40px;
+      border-bottom: 1px solid #efefef;
+    }
+
+    .form-container {
+      height: 200px;
+      border-bottom: 1px solid #efefef;
+    }
+
+    .table-container {
+      height: 400px;
+      padding-top: 10px;
+      border-bottom: 1px solid #efefef;
+    }
+    .button-container .h-btn{
+      margin-right: 10px;
+    }
+    .ts {
+      border: 1px solid #e45e45;
+    }
+
+    .click-on {
+      position: relative;
+    }
+
+    .form-item-delete {
+      display: none;
+    }
+
+    .click-on .form-item-delete {
+      display: inline-block;
+      position: absolute;
+      left: 10px;
+    }
+
+    .click-on .h-form-item {
+      box-shadow: 2px 3px 4px #999;
+      /* background-color: #efefef; */
+    }
+    .button-on{
+      box-shadow: 2px 3px 4px #999;
+    }
+    /* reset hui */
+
+    .h-form-item.reset-hui {
+      margin: 10px 0 0 0;
+    }
+
+    .h-form-label-top .reset-hui .h-form-item-label {
+      padding: 0;
+      line-height: 24px;
+    }
+
+    .reset-hui .h-input {
+      height: 28px;
+      line-height: 28px;
+    }
+
+    .reset-hui .h-form-item-content {
+      height: 28px;
+      line-height: 28px;
+    }
+
+    .default-item {
+      margin-top: 10px;
+    }
+
+    .default-item strong {
+      width: 80px;
+    }
+
+    .default-item span {
+      color: #999;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app">
+    <h-row>
+      <h-col span="3">
+        <h-menu style="width:140px;">
+          <h-menu-group title="表单组件">
+            <h-menu-item name="1" draggable="true" ondragstart="drag(event)" id="dragForm_input">
+              <h-icon name="compose"></h-icon>
+              输入框
+            </h-menu-item>
+            <h-menu-item name="2" draggable="true" ondragstart="drag(event)" id="dragForm_select">
+              <h-icon name="android-checkbox-outline"></h-icon>
+              单选框
+            </h-menu-item>
+            <h-menu-item name="5" draggable="true" ondragstart="drag(event)" id="dragForm_multiple">
+              <h-icon name="activity"></h-icon>
+              多选框
+            </h-menu-item>
+          </h-menu-group>
+          <h-menu-group title="表格组件">
+            <h-menu-item name="3" draggable="true" ondragstart="drag(event)" id="dragTable1">
+              <h-icon name="createtask"></h-icon>
+              汇总
+            </h-menu-item>
+            <h-menu-item name="4" draggable="true" ondragstart="drag(event)" id="dragTable2">
+              <h-icon name="ios-grid-view"></h-icon>
+              表格
+            </h-menu-item>
+          </h-menu-group>
+          <h-menu-group title="按钮组件">
+            <h-menu-item name="3" draggable="true" ondragstart="drag(event)" id="dragButton">
+              <h-icon name="toggle"></h-icon>
+              按钮
+            </h-menu-item>
+          </h-menu-group>
+        </h-menu>
+      </h-col>
+      <h-col span="16" style="padding-right: 10px;">
+        <div @click="AreaClick('other')">
+          <div class="header">
+            <h2>{{templateParam.name}}</h2>
+          </div>
+          <div class="form-container" id="formContainer" ondragenter="dragEnter(event)" ondrop="dropForm(event)" ondragover="allowDrop(event)">
+            <h-form :label-width="80" :rules="ruleInline" inline cols='4'>
+              <div v-for="(formItem,index) in dataFieldSelected" @click.stop="formItemClick(formItem.fieldCode)" :class="{'click-on':multiSelectFormItem.indexOf(formItem.fieldCode)>-1}">
+                <h-form-item :label="formItem.fieldName" :prop="formItem.fieldCode">
+                  <h-input type="text" v-if="formItem.fieldType=='input'" placeholder="输入框">
+                  </h-input>
+                  <h-input type="text" v-if="formItem.fieldType=='select'" placeholder="单选">
+                  </h-input>
+                  <h-input type="text" v-if="formItem.fieldType=='multiple'" placeholder="多选框">
+                  </h-input>
+                </h-form-item>
+              </div>
+              <h-form-item>
+                <h-button type="primary" @click.stop="AreaClick('button','query');">查询</h-button>
+                <h-button type="ghost">重置</h-button>
+              </h-form-item>
+            </h-form>
+          </div>
+          <div class="table-container">
+            <div class="button-container" id="buttonOperationContainer" ondrop="dropOperation(event)" ondragover="allowDrop(event)">
+              <h-button v-for="(buttonItem,index) in dataButtonOperationList" :key="index" :type="buttonItem.attribute.type"  :class="{'button-on':currentButton==buttonItem.button_code}" @click.stop="btnClick(buttonItem.button_code)" >{{buttonItem.name}}</h-button>
+            </div>
+            <div id="tableContainer" ondrop="drapTable(event)" ondragover="allowDrop(event)">
+              <h-table style="margin-top: 10px;" border :can-move="true" :data="tableData" :columns="tableColumns" :height="100" head-algin="center"
+                @on-move="onMove" ref="table">
+              </h-table>
+            </div>
+          </div>
+        </div>
+      </h-col>
+      <h-col span="5" style="border-left: 1px solid #efefef;padding-left: 10px;height: 400px;">
+        <h-tabs v-if="currentArea =='field'" :animated="false">
+          <h-tab-pane label="字段属性">
+            <h-form :label-width="80" :model="componentInParam" :label-position="'left'">
+              <h-form-item label="宽度" class="reset-hui">
+                <h-input type="text" v-model="componentInParam.width" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="是否可编辑" class="reset-hui">
+                <h-radio-group v-model="componentInParam.editable">
+                  <h-radio label="是" true-value='1'>
+                  </h-radio>
+                  <h-radio label="否" true-value='0'>
+                  </h-radio>
+                </h-radio-group>
+              </h-form-item>
+              <h-form-item label="是否可排序" class="reset-hui">
+                <h-radio-group v-model="componentInParam.orderable">
+                  <h-radio label="是" true-value='1'>
+                  </h-radio>
+                  <h-radio label="否" true-value='0'>
+                  </h-radio>
+                </h-radio-group>
+              </h-form-item>
+              <h-form-item label="是否可搜索" class="reset-hui">
+                <h-radio-group v-model="componentInParam.searchable">
+                  <h-radio label="是" true-value='1'>
+                  </h-radio>
+                  <h-radio label="否" true-value='0'>
+                  </h-radio>
+                </h-radio-group>
+              </h-form-item>
+              <h-form-item label="字典名称" class="reset-hui">
+                <h-input type="text" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="翻译类型" class="reset-hui">
+                <h-input type="text" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="默认值" class="reset-hui">
+                <h-input type="text" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="是否可见" class="reset-hui">
+                <h-radio-group v-model="componentInParam.visible">
+                  <h-radio label="是" true-value='1'>
+                  </h-radio>
+                  <h-radio label="否" true-value='0'>
+                  </h-radio>
+                </h-radio-group>
+              </h-form-item>
+              <h-form-item label="组件状态" class="reset-hui">
+                <h-radio-group v-model="componentInParam.visible">
+                  <h-radio label="正常" true-value='1'>
+                  </h-radio>
+                  <h-radio label="不正常" true-value='0'>
+                  </h-radio>
+                </h-radio-group>
+              </h-form-item>
+              <h-form-item label="悬浮说明" class="reset-hui">
+                <h-input type="text" v-model="componentInParam.field_help_desc" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="格式化" class="reset-hui">
+                <h-input type="text" v-model="componentInParam.format" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="校验规则" class="reset-hui">
+                <h-input type="text" v-model="componentInParam.check_rules" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="服务代码" class="reset-hui">
+                <h-input type="text" v-model="componentInParam.service_code" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="render函数" class="reset-hui">
+                <h-input type="text" v-model="componentInParam.render_function" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+            </h-form>
+          </h-tab-pane>
+          <h-tab-pane label="字段参数">
+            <h-form :label-position="'left'" :label-width="80">
+              <h-form-item label="tag_order" class="reset-hui">
+                <h-input type="text" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="i_orderable" class="reset-hui">
+                <h-input type="text" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+            </h-form>
+          </h-tab-pane>
+        </h-tabs>
+        <h-tabs v-if="currentArea =='button'" :animated="false">
+          <h-tab-pane label="按钮配置">
+            <h-form :label-width="80" :model="buttonParam" :label-position="'left'">
+              <h-form-item label="按钮类型" class="reset-hui">
+                <h-input type="text" v-model="buttonParam.component_code" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="按钮编码" class="reset-hui" required>
+                <h-input type="text" v-model="buttonParam.component_code" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="显示文字" class="reset-hui">
+                <h-input type="text" v-model="buttonParam.name" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="请求服务" class="reset-hui">
+                <h-input type="text" v-model="buttonParam.request_service_code" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="校验服务" class="reset-hui">
+                <h-input type="text" v-model="buttonParam.verify_service_code" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="打开页面" class="reset-hui">
+                <h-input type="text" v-model="buttonParam.open_view_code" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="校验函数" class="reset-hui">
+                <h-input type="text" v-model="buttonParam.verify_function" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="资源代码" class="reset-hui">
+                <h-input type="text" v-model="buttonParam.resource_code" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="回调函数" class="reset-hui">
+                <h-input type="text" v-model="buttonParam.callback_function" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+            </h-form>
+          </h-tab-pane>
+          <h-tab-pane label="额外属性">
+            <h-form :label-position="'left'" :label-width="100">
+              <h-form-item label="打开页面标题" class="reset-hui">
+                <h-input type="text" v-model="buttonParam.attribute.title" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="打开页面宽度" class="reset-hui">
+                <h-input type="text" v-model="buttonParam.attribute.width" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="打开页面高度" class="reset-hui">
+                <h-input type="text" v-model="buttonParam.attribute.height" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="按钮类型" class="reset-hui">
+                <h-input type="text" v-model="buttonParam.attribute.type" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="加载时执行" class="reset-hui">
+                <h-input type="text" v-model="buttonParam.attribute.executeOnLoad" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="选择类型" class="reset-hui">
+                <h-input type="text" v-model="buttonParam.attribute.selectType" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="是否显示加载中" class="reset-hui">
+                <h-input type="text" v-model="buttonParam.attribute.isLoading" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="加载时文字显示" class="reset-hui">
+                <h-input type="text" v-model="buttonParam.attribute.loadingText" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+              <h-form-item label="显示信息" class="reset-hui">
+                <h-input type="text" v-model="buttonParam.attribute.message" placeholder="请输入">
+                </h-input>
+              </h-form-item>
+            </h-form>
+          </h-tab-pane>
+        </h-tabs>
+        <div v-if="currentArea =='other'">
+          <h-form :model="templateParam" :label-position="'left'" :label-width="80">
+            <h-form-item label="tab标题" class="reset-hui" required>
+              <h-input type="text" v-model="templateParam.name" placeholder="请输入">
+              </h-input>
+            </h-form-item>
+            <h-form-item label="tabCode" class="reset-hui" required>
+              <h-input type="text" v-model="templateParam.tabCode" placeholder="请输入">
+              </h-input>
+            </h-form-item>
+            <h-form-item label="菜单url" class="reset-hui" required>
+              <h-input type="text" v-model="templateParam.menuCode" placeholder="请输入">
+              </h-input>
+            </h-form-item>
+            <div style="margin-top: 40px;">
+              <h-button type="text" style="color: #107fff;" @click="isShowField=true">+编辑表单字段</h-button>
+              <br>
+              <h-button type="text" style="color: #107fff;" @click="isShowService=true">+编辑表格字段</h-button>
+            </div>
+          </h-form>
+        </div>
+      </h-col>
+    </h-row>
+    <h-msg-box :mask-closable="false" v-model="isShowService" title="编辑服务" width="1000px" height="400" :footer-hide=true>
+      <h-select-table v-model="keywordService" :filterable="true" :format="formatService" :match-col="matchColService" :matchable="true"
+        match-way="blurry" :multiple="true">
+        <h-table-option border :columns="columnsService" :data="dataService" @on-select-all="handleAllSelectService" @on-select="handleSelectService"
+          :row-select="true" @on-selection-change="handleSelectionChangeService"></h-table-option>
+      </h-select-table>
+      <h-table border stripe :data="dataServiceSelected" :columns="columnsServiceSelected" head-algin="center" ref="tableService">
+      </h-table>
+    </h-msg-box>
+    <h-msg-box :mask-closable="false" v-model="isShowField" title="编辑字段" width="1000px" height="400" :footer-hide=true>
+      <h-select-table v-model="keywordField" :filterable="true" :format="formatField" :match-col="matchColField" :matchable="true"
+        match-way="blurry" :multiple="true">
+        <h-table-option border :columns="columnsField" :data="dataField" @on-select-all="handleAllSelectField" @on-select="handleSelectField"
+          :row-select="true" @on-selection-change="handleSelectionChangeField"></h-table-option>
+      </h-select-table>
+      <h-table border stripe :data="dataFieldSelected" :columns="columnsFieldSelected" head-algin="center" ref="tableField">
+      </h-table>
+    </h-msg-box>
+  </div>
+</body>
+<!-- vue中拖动元素，只能拖动实际的dom结构，但是可以使用数据驱动的方式去更改 -->
+<!-- dom结构中的ctrl多选 -->
+<script type="text/javascript">
+  function allowDrop(ev) {
+    ev.preventDefault();
+  }
+  function drag(ev) {
+    ev.dataTransfer.setData("Text", ev.target.id);
+  }
+  function dragEnter(ev) {
+    console.log(ev);
+  }
+  function dropForm(ev) {
+    console.log(ev);
+    var data = ev.dataTransfer.getData("Text");
+    if (data.indexOf('dragForm') > -1) {
+      ev.preventDefault();
+      app.$data.dataFieldSelected.push({
+        fieldName: '字段名' + app.$data.dataFieldSelected.length,
+        fieldCode: 'default' + app.$data.dataFieldSelected.length,
+        fieldType: data.substr(9)
+      })
+    } else {
+      app.$hMessage.error('请放置合适的位置');
+    }
+  }
+  function drapTable(ev) {
+    ev.preventDefault();
+    var data = ev.dataTransfer.getData("Text");
+    var item = document.getElementById(data).cloneNode(true);
+    if (data.indexOf('dragTable') > -1) {
+      ev.preventDefault();
+      app.$data.tableColumns.push({
+        title: '字段名称' + app.$data.tableColumns.length,
+        key: 'fieldName' + app.$data.tableColumns.length,
+        ellipsis: true
+      })
+    } else {
+      app.$hMessage.error('请放置合适的位置');
+    }
+  }
+  function dropOperation(ev) {
+    ev.preventDefault();
+    var data = ev.dataTransfer.getData("Text");
+    //var item = document.getElementById(data).cloneNode(true);
+
+    if (data.indexOf('dragButton') > -1) {
+      app.$data.dataButtonOperationList.push({
+        button_code: 'button_code'+app.$data.dataButtonOperationList.length,
+        component_code: '',
+        name: '操作',
+        tag_group: '',
+        v_request_service_code: '',
+        verify_service_code: '',
+        open_view_code: '',
+        verify_function: '',
+        attribute: {
+          title: '',
+          width: '',
+          height: '',
+          type: 'primary',
+          executeOnLoad: '',
+          selectType: '',
+          isLoading: '',
+          loadingText: '',
+          message: '',
+        },
+        resource_code: '',
+        callback_function: '',
+      })
+    } else {
+      app.$hMessage.error('请放置合适的位置');
+    }
+  }
+  var app = new Vue({
+    el: "#app",
+    data() {
+      return {
+        templateParam: {
+          tenantCode: '*',
+          tabCode: 'notifyuseradd',
+          name: '标题栏',
+          templateCode: 'ta-template/list',
+          menuCode: '',
+        },
+        isShowService: false,
+        isShowField: false,
+        isCtrl: false,
+        componentDefaultParam: {
+          tenant_code: '*',
+          tab_code: '',
+          field_code: '',
+          field_name: '',
+          component_code: '',
+          tag_group: '',
+          tag_order: '',//按照排序
+        },
+        componentInParam: {
+          format: '',
+          width: '',
+          editable: '',
+          orderable: '',
+          searchable: '',
+          dict_name: '',
+          default_value: '',
+          visible: '',
+          check_rules: '',
+          component_status: '',
+          parameters: '',
+          trans_type: '',
+          service_code: '',
+          tag_name: '',
+          is_duplicate_key: '',
+          parent_tag_group: '',
+          parent_tag_name: '',
+          render_function: '',
+          field_help_desc: ''
+        },
+        componentOutParam: {
+          isSearch: 1,
+        },
+        buttonParam: {
+          component_code: '',
+          button_code: '',
+          name: '',
+          tag_group: '',
+          request_service_code: '',
+          verify_service_code: '',
+          open_view_code: '',
+          verify_function: '',
+          attribute: {
+            title: '',
+            width: '',
+            height: '',
+            type: '',
+            executeOnLoad: '',
+            selectType: '',
+            isLoading: '',
+            loadingText: '',
+            message: '',
+          },
+          resource_code: '',
+          callback_function: '',
+        },
+        dataButtonQueryList: [
+
+        ],
+        dataButtonOperationList: [
+          {
+            button_code: 'add',
+            component_code: '',
+            name: '新增',
+            tag_group: '',
+            v_request_service_code: '',
+            verify_service_code: '',
+            open_view_code: '',
+            verify_function: '',
+            attribute: {
+              title: '',
+              width: '',
+              height: '',
+              type: 'primary',
+              executeOnLoad: '',
+              selectType: '',
+              isLoading: '',
+              loadingText: '',
+              message: '',
+            },
+            resource_code: '',
+            callback_function: '',
+          },
+          {
+            button_code: 'delete',
+            component_code: '',
+            name: '删除',
+            tag_group: '',
+            v_request_service_code: '',
+            verify_service_code: '',
+            open_view_code: '',
+            verify_function: '',
+            attribute: {
+              title: '',
+              width: '',
+              height: '',
+              type: 'ghost',
+              executeOnLoad: '',
+              selectType: '',
+              isLoading: '',
+              loadingText: '',
+              message: '',
+            },
+            resource_code: '',
+            callback_function: '',
+          }
+        ],
+        multiSelectFormItem: [],
+        currentArea: 'other',//formArea;tableArea
+        currentButton: '',
+        buttonQueryList: [
+
+        ],
+        buttonActionList: [
+
+        ],
+        formComponentList: [
+          {
+            label: '用户',
+            prop: 'user',
+            type: 'input'
+          }
+        ],
+        ruleInline: {},
+        tableColumns: [],
+        tableData: [],
+        data1: this.getMockData(),
+        targetKeys1: [],
+        transferTitles: ['标准字段', '已选字段'],
+        keywordField: [],
+        val: '',
+        matchColField: ['serviceCode', 'serviceName'],
+        formatField: ['fieldName,fieldCode', '_'],
+        columnsField: [
+          {
+            title: '字段代码',
+            key: 'fieldCode',
+            width: 150
+          },
+          {
+            title: '字段名称',
+            key: 'fieldName',
+            width: 150
+          },
+          {
+            title: '字段说明',
+            key: 'fieldDescription',
+            width: 500
+          }
+        ],
+        dataField: [
+          {
+            fieldCode: 'taCode',
+            fieldName: 'TA名称',
+            fieldDescription: '这个字段是干嘛干嘛的这个字段是干嘛干嘛的这个字段是干嘛干嘛的'
+          },
+          {
+            fieldCode: 'templateCode',
+            fieldName: '模板代码',
+            fieldDescription: '这个字段是干嘛干嘛的这个字段是干嘛干嘛的这个字段是干嘛干嘛的'
+          },
+          {
+            fieldCode: 'templateName',
+            fieldName: '模板名称',
+            fieldDescription: '这个字段是干嘛干嘛的这个字段是干嘛干嘛的这个字段是干嘛干嘛的'
+          }
+        ],
+        dataFieldSelected: [],
+        columnsFieldSelected: [
+          {
+            title: '字段代码',
+            key: 'fieldCode',
+          },
+          {
+            title: '字段名称',
+            key: 'fieldName',
+          },
+          {
+            title: '字段说明',
+            key: 'fieldDescription',
+            width: 500
+          },
+          {
+            title: '操作',
+            render: (h, params) => {
+              return h("div", [
+                h("Button", {
+                  props: {
+                    type: "text",
+                    size: "small"
+                  },
+                  on: {
+                    click: () => {
+                      this.deleteField(params.row);
+                    }
+                  }
+                }, "删除")
+              ])
+            }
+          }
+        ],
+        keywordService: [],
+        val: '',
+        matchColService: ['serviceCode', 'serviceName'],
+        formatService: ['serviceName,serviceCode', '_'],
+        columnsService: [
+          {
+            title: '服务代码',
+            key: 'serviceCode',
+            width: 150
+          },
+          {
+            title: '服务名称',
+            key: 'serviceName',
+            width: 150
+          },
+          {
+            title: '执行方法',
+            key: 'executeMethod',
+            width: 500
+          }
+        ],
+        dataService: [
+          {
+            serviceCode: 'getAllNotifyUser',
+            serviceName: '查询通知用户',
+            executeMethod: 'com.hundsun.ta.notify.service.NotifyUserService.getAllNotifyUser'
+          },
+          {
+            serviceCode: 'delNotifyUser',
+            serviceName: '删除通知用户',
+            executeMethod: 'com.hundsun.ta.notify.service.NotifyUserService.delNotifyUser'
+          },
+          {
+            serviceCode: 'getAllNotifyTemplate',
+            serviceName: '查询模板信息',
+            executeMethod: 'com.hundsun.ta.notify.service.NotifyTemplateService.getAllNotifyTemplate'
+          }
+        ],
+        dataServiceSelected: [],
+        columnsServiceSelected: [
+          {
+            title: 'serviceCode',
+            key: 'serviceCode',
+          },
+          {
+            title: 'serviceName',
+            key: 'serviceName'
+          },
+          {
+            title: 'executeMethod',
+            key: 'executeMethod',
+            width: 500
+          },
+          {
+            title: '操作',
+            render: (h, params) => {
+              return h("div", [
+                h("Button", {
+                  props: {
+                    type: "text",
+                    size: "small"
+                  },
+                  on: {
+                    click: () => {
+                      this.deleteService(params.row);
+                    }
+                  }
+                }, "删除")
+              ])
+            }
+          }
+        ],
+      }
+    },
+    methods: {
+      onMove(event) {
+        console.log(event);
+      },
+      getMockData() {
+        let mockData = [];
+        for (let i = 1; i <= 20; i++) {
+          mockData.push({
+            key: i.toString(),
+            label: '标准字段' + i,
+            description: '字段' + i + '的描述信息',
+            disabled: Math.random() * 3 < 1
+          });
+        }
+        return mockData;
+      },
+      getTargetKeys() {
+        return this.getMockData()
+          .filter(() => Math.random() * 2 > 1)
+          .map(item => item.key);
+      },
+      render1(item) {
+        return item.label;
+      },
+      handleChange1(newTargetKeys, direction, moveKeys) {
+        console.log(newTargetKeys);
+        console.log(direction);
+        console.log(moveKeys);
+        this.targetKeys1 = newTargetKeys;
+        let _this = this;
+        if (direction == 'right') {
+          //往右，新增
+          //判断是哪个区域的，然后往当前区域进行操作
+          moveKeys.map((item) => {
+            let label;
+            _this.data1.map(dataItem => {
+              if (dataItem.key == item) {
+                label = dataItem.label
+              }
+            })
+            _this.formComponentList.push(
+              {
+                label: label,
+                prop: item
+              }
+            );
+          })
+        } else {
+          //往左，删减
+          moveKeys.map((item) => {
+            let newList;
+            newList = _this.formComponentList.filter(formItem => {
+              console.log("formItem.prop=" + formItem.prop + "+item=" + item);
+              return formItem.prop != item
+            })
+            _this.formComponentList = newList;
+          })
+        }
+      },
+      formDeleteClick(prop) {
+        console.log('formDeleteClick');
+        let newList = this.formComponentList.filter(item => {
+          return item.prop != prop;
+        })
+        this.formComponentList = newList;
+      },
+      formItemClick(prop) {
+        this.currentArea = 'field';
+        if (this.isCtrl) {
+          //先判断该项存不存在，存在则删除，不存在则新增；
+          let newList = this.multiSelectFormItem.filter(formItem => {
+            return formItem != prop;
+          })
+          if (newList.length == this.multiSelectFormItem.length) {
+            this.multiSelectFormItem.push(prop);
+          } else {
+            this.multiSelectFormItem = newList;
+          }
+        } else {
+          this.multiSelectFormItem = [];
+          this.multiSelectFormItem.push(prop);
+        }
+      },
+      btnClick(btnCode){
+        this.currentArea = 'button';
+        this.currentButton=btnCode;
+        //属性合并
+      },
+      AreaClick(area, buttonType) {
+        this.currentArea = area;
+        if (area == 'button') {
+          //当前是哪个按钮，查询按钮特殊处理
+
+        }
+        console.log(area);
+      },
+      addOperationBtn() {
+
+      },
+      deleteCurrentSelected() {
+        if (this.multiSelectFormItem.length > 0) {
+          let _this = this;
+          this.$hMsgBox.confirm({
+            title: '提示信息',
+            content: '您确定要删除已选字段吗？',
+            onOk: () => {
+              _this.multiSelectFormItem.map((item) => {
+                let newList;
+                newList = _this.dataFieldSelected.filter(fieldItem => {
+                  return fieldItem.fieldCode != item
+                })
+                console.log(newList);
+                _this.dataFieldSelected = newList;
+              })
+              _this.multiSelectFormItem = [];
+            }
+          });
+        }
+        if (this.currentButton) {
+          let _this = this;
+          this.$hMsgBox.confirm({
+            title: '提示信息',
+            content: '您确定要删除该按钮吗？',
+            onOk: () => {
+              _this.dataButtonOperationList = _this.dataButtonOperationList.filter(btnItem => {
+                  return btnItem.button_code != _this.currentButton
+                })
+              _this.currentButton = '';
+            }
+          });
+        }
+      },
+      handleAllSelectService() {
+        console.log('handleAllSelectService');
+      },
+      handleSelectService(rows, param) {
+        let _this = this;
+        if (rows.length > 0) {
+          //合并数组
+          rows.map((row) => {
+            let isExit = false;
+            for (let i = 0; i < _this.dataServiceSelected.length; i++) {
+              if (row.serviceCode == _this.dataServiceSelected[i].serviceCode) {
+                isExit = true;
+              }
+            };
+            if (!isExit) {
+              _this.dataServiceSelected.push(row);
+            }
+          })
+        }
+      },
+      handleSelectionChangeService(rows) {
+      },
+      deleteService(row) {
+        this.dataServiceSelected.splice(row._index, 1);
+        this.keywordService = [];
+      },
+      handleAllSelectField() {
+      },
+      handleSelectField(rows, param) {
+        let _this = this;
+        if (rows.length > 0) {
+          //合并数组
+          rows.map((row) => {
+            let isExit = false;
+            for (let i = 0; i < _this.dataFieldSelected.length; i++) {
+              if (row.fieldCode == _this.dataFieldSelected[i].fieldCode) {
+                isExit = true;
+              }
+            };
+            if (!isExit) {
+              row.fieldType = 'input'
+              _this.dataFieldSelected.push(row);
+            }
+          })
+        }
+      },
+      handleSelectionChangeField(rows) {
+      },
+      deleteField(row) {
+        this.dataFieldSelected.splice(row._index, 1);
+        this.keywordField = [];
+      }
+    },
+    created() {
+      var _this = this;
+      //16 SHIFT
+      //17 ctrl
+      //46 delete
+      document.onkeydown = function (e) {
+        console.log(window.event.keyCode);
+        let key = window.event.keyCode;
+        if (key == 17) {
+          _this.isCtrl = true;
+        }
+        if (key == 46) {
+          _this.deleteCurrentSelected();
+
+        }
+      }
+      document.onkeyup = function () {
+        let key = window.event.keyCode;
+        if (key == 17) {
+          _this.isCtrl = false;
+        }
+      };
+    },
+    watch: {
+      currentArea: {
+        handler(val) {
+          if (val == 'other') {
+            this.multiSelectFormItem = [];
+          }
+        }
+      },
+      multiSelectFormItem: {
+        handler(val) {
+          if (val.length == 0) {
+            this.currentArea = 'other';
+          }
+        }
+      },
+      isShowService: {
+        handler(val) {
+          if (!val) {
+            this.keywordService = [];
+          }
+        }
+      },
+      isShowField: {
+        handler(val) {
+          if (!val) {
+            this.keywordField = [];
+          }
+        }
+      }
+    }
+  })
+</script>
+
+</html>
